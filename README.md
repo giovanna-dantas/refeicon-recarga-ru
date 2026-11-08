@@ -30,7 +30,7 @@ Também tem painel com saldo, histórico e extrato, e horário de funcionamento 
 
 ## Como eu usei IA (e o que foi decisão minha)
 
-**Ferramenta:** Gemini Canvas (vibe coding). O código foi gerado pela IA a partir de um prompt que eu escrevi em dupla com a [@NOME-DA-MARI](https://github.com/).
+**Ferramenta:** Gemini Canvas (vibe coding). O código foi gerado pela IA a partir de um prompt que eu escrevi.
 
 **Método:** antes de abrir o Gemini, desligamos o celular e pensamos por conta própria no problema e na solução. Só depois escrevemos tudo em um único prompt.
 
