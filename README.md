@@ -4,7 +4,7 @@
 
 [**Ver demo online**](https://giovanna-dantas.github.io/refeicon-recarga-ru/) · [Ver o prompt](PROMPT.md)
 
-![Tela principal do RefeiçON](img/tela-principal.png)
+![Tela principal do RefeiçON](img/tela-principal.jpg)
 
 ## O problema
 
