@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RefeiçON - Recarga do RU sem Fila</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts Inter e Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            900: '#14532d',
+                        },
+                        suap: {
+                            light: '#eef2ff',
+                            DEFAULT: '#4f46e5',
+                            dark: '#3730a3'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+        /* Transições suaves */
+        .tab-content {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+        .tab-content.active {
+            display: block;
+            opacity: 1;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col justify-between">
+
+    <!-- TOP HEADER / NAV -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <!-- Logo & Nome -->
+                <div class="flex items-center gap-3">
+                    <div class="bg-gradient-to-tr from-brand-600 to-emerald-400 text-white p-2.5 rounded-2xl shadow-lg shadow-brand-500/20 flex items-center justify-center">
+                        <i class="fa-solid font-bold fa-utensils text-xl"></i>
+                    </div>
+                    <div>
+                        <span class="font-extrabold text-2xl tracking-tight text-slate-900">Refeiç<span class="text-brand-600">ON</span></span>
+                        <span class="hidden sm:inline-block text-xs bg-brand-100 text-brand-700 font-bold px-2 py-0.5 rounded-full ml-2">Sem Fila ⚡</span>
+                    </div>
+                </div>
+
+                <!-- Perfil / Status Conexão SUAP -->
+                <div class="flex items-center gap-4">
+                    <div id="suapBadge" class="hidden md:flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200 text-xs font-semibold text-slate-600">
+                        <span id="suapStatusDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
+                        <span id="suapStatusText">SUAP Desconectado</span>
+                    </div>
+                    
+                    <button onclick="switchTab('profile')" class="flex items-center gap-3 hover:bg-slate-100 p-1.5 rounded-xl transition">
+                        <img id="userAvatar" src="https://placehold.co/100x100/e2e8f0/64748b?text=?" alt="Avatar" class="w-9 h-9 rounded-full ring-2 ring-slate-200 object-cover">
+                        <div class="text-left hidden sm:block">
+                            <p id="userNameHeader" class="text-sm font-bold text-slate-800 leading-tight">Não Autenticado</p>
+                            <p id="userMatriculaHeader" class="text-xs text-slate-500">Acesse via SUAP</p>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- CONTAINER PRINCIPAL -->
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow">
+        
+        <!-- DASHBOARD HERO BANNER (Resumo de Saldo) -->
+        <div class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-slate-800 to-brand-900 text-white p-6 sm:p-8 shadow-xl mb-8">
+            <!-- Efeito visual de fundo -->
+            <div class="absolute -right-10 -bottom-10 w-64 h-64 bg-brand-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center relative z-10">
+                <div class="md:col-span-2">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-xs font-medium text-emerald-300 mb-3">
+                        <i class="fa-solid fa-graduation-cap"></i> Cartão Universitário Integrado
+                    </div>
+                    <h1 class="text-2xl sm:text-3xl font-bold">Adeus filas no RU! 🚀</h1>
+                    <p class="text-slate-300 text-sm sm:text-base mt-1">Acesse com o SUAP, recarregue seu crédito em segundos e aproveite sua refeição sem estresse.</p>
+                </div>
+
+                <!-- Card de Saldo Integrado -->
+                <div class="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4 flex flex-col justify-between">
+                    <div class="flex justify-between items-start">
+                        <span class="text-xs uppercase tracking-wider text-slate-300 font-semibold">Saldo Atual</span>
+                        <i class="fa-solid fa-wallet text-brand-400"></i>
+                    </div>
+                    <div class="my-2">
+                        <span id="displaySaldo" class="text-3xl sm:text-4xl font-extrabold text-white">R$ 0,00</span>
+                    </div>
+                    <div class="flex items-center justify-between text-xs text-slate-300 pt-2 border-t border-white/10">
+                        <span>Equivale a:</span>
+                        <span id="displayRefeicoesCount" class="font-bold text-emerald-400 text-sm">0 Refeições 🍲</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- NAVEGAÇÃO POR ABAS -->
+        <div class="flex space-x-2 border-b border-slate-200 mb-8 overflow-x-auto pb-1">
+            <button id="tabBtn-recarregar" onclick="switchTab('recarregar')" class="px-5 py-3 font-semibold text-sm rounded-xl transition flex items-center gap-2 bg-brand-600 text-white shadow-md shadow-brand-500/20">
+                <i class="fa-solid fa-bolt"></i> Acesso SUAP & Recarga
+            </button>
+            <button id="tabBtn-historico" onclick="switchTab('historico')" class="px-5 py-3 font-semibold text-sm rounded-xl transition flex items-center gap-2 text-slate-600 hover:bg-slate-100">
+                <i class="fa-solid fa-clock-rotate-left"></i> Histórico & Extrato
+            </button>
+            <button id="tabBtn-profile" onclick="switchTab('profile')" class="px-5 py-3 font-semibold text-sm rounded-xl transition flex items-center gap-2 text-slate-600 hover:bg-slate-100">
+                <i class="fa-solid fa-id-card"></i> Cartão Conectado
+            </button>
+        </div>
+
+        <!-- ABA 1: FORMULÁRIO DE RECARGA -->
+        <section id="tab-recarregar" class="tab-content active">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                
+                <!-- Formulário Principal (7 Colunas) -->
+                <div class="lg:col-span-7 space-y-6">
+                    <div class="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm">
+                        
+                        <!-- CARD DE AUTENTICAÇÃO SUAP -->
+                        <div id="suapLoginSection" class="bg-indigo-50/70 border border-indigo-100 p-5 rounded-2xl mb-6">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center gap-2 text-indigo-900 font-bold text-sm">
+                                    <i class="fa-solid fa-key text-indigo-600"></i> Acesso via SUAP
+                                </div>
+                                <span id="suapStatusBadge" class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">Login Necessário</span>
+                            </div>
+                            
+                            <div id="suapLoginForm" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Matrícula / Usuário SUAP</label>
+                                    <input type="text" id="suapUser" placeholder="Ex: 2023108920" value="2023108920" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Senha SUAP</label>
+                                    <input type="password" id="suapPassword" placeholder="••••••••" value="123456" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                                <div class="sm:col-span-2 mt-1">
+                                    <button type="button" id="btnConectarSuap" onclick="autenticarSuap()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-sm">
+                                        <i class="fa-solid fa-right-to-bracket"></i> Conectar e Buscar Cartão do RU
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Informações do Cartão Carregado do SUAP -->
+                            <div id="suapCardLoaded" class="hidden flex items-center justify-between bg-white p-3.5 rounded-xl border border-indigo-100 shadow-sm">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-sm">
+                                        <i class="fa-solid fa-address-card"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-bold text-slate-800" id="cardNameSUAP">Luana Martins da Silva</p>
+                                        <p class="text-[11px] text-slate-500 font-mono">Cartão RU: <span id="cardCodeSUAP" class="font-bold text-slate-700">8842-109</span></p>
+                                    </div>
+                                </div>
+                                <button onclick="desconectarSuap()" class="text-xs text-slate-400 hover:text-rose-600 p-1">
+                                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <h2 class="text-xl font-bold text-slate-900 mb-1 flex items-center gap-2">
+                            <i class="fa-solid fa-credit-card text-brand-600"></i> Dados da Recarga
+                        </h2>
+                        <p class="text-xs text-slate-500 mb-6">Selecione o valor desejado e a forma de pagamento rápida.</p>
+
+                        <form id="formRecarga" onsubmit="processarRecarga(event)" class="space-y-5 opacity-50 pointer-events-none transition-all duration-300">
+
+                            <!-- Seleção de Valor -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Quanto deseja recarregar?</label>
+                                
+                                <!-- Botões Rápidos de Valor -->
+                                <div class="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-3">
+                                    <button type="button" onclick="setValorPreset(7.00, this)" class="preset-btn py-2.5 px-3 border border-slate-200 rounded-xl text-center hover:border-brand-500 hover:bg-brand-50 font-bold text-slate-700 transition active">
+                                        R$ 7,00
+                                    </button>
+                                    <button type="button" onclick="setValorPreset(14.00, this)" class="preset-btn py-2.5 px-3 border border-slate-200 rounded-xl text-center hover:border-brand-500 hover:bg-brand-50 font-bold text-slate-700 transition">
+                                        R$ 14,00
+                                    </button>
+                                    <button type="button" onclick="setValorPreset(28.00, this)" class="preset-btn py-2.5 px-3 border border-slate-200 rounded-xl text-center hover:border-brand-500 hover:bg-brand-50 font-bold text-slate-700 transition">
+                                        R$ 28,00
+                                    </button>
+                                    <button type="button" onclick="setValorPreset(50.00, this)" class="preset-btn py-2.5 px-3 border border-slate-200 rounded-xl text-center hover:border-brand-500 hover:bg-brand-50 font-bold text-slate-700 transition">
+                                        R$ 50,00
+                                    </button>
+                                </div>
+
+                                <!-- Input Customizado -->
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500 font-bold">R$</span>
+                                    <input type="number" id="inputValor" step="0.50" min="1.40" value="7.00" oninput="calcularRefeicoes()" required class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:bg-white font-extrabold text-lg text-slate-800 transition">
+                                </div>
+                            </div>
+
+                            <!-- Seleção do Tipo de Pagamento -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Forma de Pagamento</label>
+                                <div class="grid grid-cols-3 gap-3">
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="paymentMethod" value="PIX" checked class="peer sr-only">
+                                        <div class="p-3 border-2 border-slate-200 rounded-2xl text-center peer-checked:border-brand-500 peer-checked:bg-brand-50/50 hover:bg-slate-50 transition flex flex-col items-center justify-center gap-1">
+                                            <i class="fa-solid fa-pix text-emerald-600 text-xl"></i>
+                                            <span class="text-xs font-bold text-slate-700">PIX (Instantâneo)</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="paymentMethod" value="Cartão de Crédito" class="peer sr-only">
+                                        <div class="p-3 border-2 border-slate-200 rounded-2xl text-center peer-checked:border-brand-500 peer-checked:bg-brand-50/50 hover:bg-slate-50 transition flex flex-col items-center justify-center gap-1">
+                                            <i class="fa-regular fa-credit-card text-indigo-600 text-xl"></i>
+                                            <span class="text-xs font-bold text-slate-700">Crédito</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="paymentMethod" value="Boleto / Pop" class="peer sr-only">
+                                        <div class="p-3 border-2 border-slate-200 rounded-2xl text-center peer-checked:border-brand-500 peer-checked:bg-brand-50/50 hover:bg-slate-50 transition flex flex-col items-center justify-center gap-1">
+                                            <i class="fa-solid fa-barcode text-amber-600 text-xl"></i>
+                                            <span class="text-xs font-bold text-slate-700">Boleto</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Botão de Ação -->
+                            <button type="submit" id="btnSubmitRecarga" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-extrabold py-4 px-6 rounded-2xl shadow-lg shadow-brand-600/30 transition transform active:scale-[0.99] flex items-center justify-center gap-2 text-base">
+                                <i class="fa-solid fa-bolt"></i> Confirmar e Recarregar Agora
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Painel Informativo & Estimador Visual (4 Colunas) -->
+                <div class="lg:col-span-5 space-y-6">
+                    
+                    <!-- Simulação / Calculadora em tempo real -->
+                    <div class="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 p-6 rounded-3xl relative overflow-hidden">
+                        <div class="flex items-center gap-2 text-emerald-800 font-bold text-sm mb-3">
+                            <i class="fa-solid fa-calculator"></i> Calculadora de Refeições
+                        </div>
+
+                        <div class="space-y-4">
+                            <div class="bg-white p-4 rounded-2xl shadow-sm border border-emerald-100 flex items-center justify-between">
+                                <div>
+                                    <p class="text-xs text-slate-500 font-semibold">Valor da Refeição (Subsidada)</p>
+                                    <p class="text-sm font-bold text-slate-800">R$ 1,40 <span class="text-[10px] text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded-full">Estudante</span></p>
+                                </div>
+                                <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-lg">
+                                    🍱
+                                </div>
+                            </div>
+
+                            <div class="bg-white p-4 rounded-2xl shadow-sm border border-emerald-100">
+                                <p class="text-xs text-slate-500 font-semibold mb-1">Com essa recarga você garante:</p>
+                                <div class="flex items-baseline gap-2">
+                                    <span id="calcRefeicoesValor" class="text-4xl font-extrabold text-brand-600">5</span>
+                                    <span class="text-slate-700 font-bold">refeições completas!</span>
+                                </div>
+                                <p class="text-xs text-slate-500 mt-2 italic" id="calcMetaDias">Dá para cobrir 2.5 dias de Almoço + Jantar.</p>
+                            </div>
+                        </div>
+
+                        <!-- Dica Empática / Jovem -->
+                        <div class="mt-4 flex items-start gap-3 bg-white/60 p-3 rounded-xl border border-emerald-200/50">
+                            <i class="fa-solid fa-lightbulb text-amber-500 mt-0.5"></i>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                <strong>Zero Fila:</strong> Pagando no PIX, o crédito entra <u>na mesma hora</u> no seu cartão físico do RU!
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Horários e Cardápio Rápido do Dia -->
+                    <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+                        <h3 class="font-bold text-slate-800 text-sm mb-3 flex items-center gap-2">
+                            <i class="fa-regular fa-clock text-brand-600"></i> Funcionamento do RU Hoje
+                        </h3>
+                        <div class="space-y-2 text-xs">
+                            <div class="flex justify-between p-2 bg-slate-50 rounded-lg">
+                                <span class="font-semibold text-slate-600">Almoço</span>
+                                <span class="font-bold text-slate-800">11:00 - 13:30</span>
+                            </div>
+                            <div class="flex justify-between p-2 bg-slate-50 rounded-lg">
+                                <span class="font-semibold text-slate-600">Jantar</span>
+                                <span class="font-bold text-slate-800">17:30 - 19:15</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ABA 2: HISTÓRICO & EXTRATO -->
+        <section id="tab-historico" class="tab-content">
+            <div class="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm">
+                <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-900">Histórico de Transações</h2>
+                        <p class="text-xs text-slate-500">Veja suas recargas e consumos no RU</p>
+                    </div>
+                    <button onclick="limparHistoricoSimulado()" class="text-xs text-rose-600 hover:text-rose-700 font-semibold border border-rose-200 px-3 py-1.5 rounded-xl hover:bg-rose-50 transition self-start sm:self-auto">
+                        Limpar registros locais
+                    </button>
+                </div>
+
+                <!-- Tabela de Movimentações -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs sm:text-sm">
+                        <thead>
+                            <tr class="border-b border-slate-200 text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
+                                <th class="pb-3 px-2">Data/Hora</th>
+                                <th class="pb-3 px-2">Descrição</th>
+                                <th class="pb-3 px-2">Método</th>
+                                <th class="pb-3 px-2 text-right">Valor</th>
+                                <th class="pb-3 px-2 text-center">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="listaHistorico" class="divide-y divide-slate-100 font-medium">
+                            <!-- Preenchido via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ABA 3: PERFIL DO ESTUDANTE / CARTÃO -->
+        <section id="tab-profile" class="tab-content">
+            <div class="max-w-2xl mx-auto bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm">
+                <h2 class="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+                    <i class="fa-solid fa-address-card text-brand-600"></i> Perfil do Estudante & Cartão SUAP
+                </h2>
+
+                <div id="profileLoggedOutView" class="text-center py-8 space-y-4">
+                    <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto text-2xl">
+                        <i class="fa-solid fa-lock"></i>
+                    </div>
+                    <p class="text-slate-600 text-sm">Você precisa se conectar via SUAP para visualizar as informações do seu cartão.</p>
+                    <button onclick="switchTab('recarregar')" class="bg-indigo-600 text-white font-bold px-5 py-2.5 rounded-xl text-xs hover:bg-indigo-700 transition">
+                        Fazer Login via SUAP
+                    </button>
+                </div>
+
+                <div id="profileLoggedInView" class="hidden space-y-6">
+                    <div class="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl">
+                        <img id="profileAvatarImg" src="https://placehold.co/100x100/16a34a/ffffff?text=LM" class="w-16 h-16 rounded-2xl ring-2 ring-brand-500/20 object-cover" alt="Foto Luana">
+                        <div>
+                            <h3 id="profileFullName" class="font-extrabold text-slate-800 text-lg">Luana Martins da Silva</h3>
+                            <p class="text-xs text-slate-500">Curso: Bacharelado em Ciência da Computação</p>
+                            <span class="inline-block mt-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-md">Matrícula Ativa no SUAP</span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4 text-sm">
+                        <div class="flex justify-between py-2.5 border-b border-slate-100">
+                            <span class="text-slate-500 font-semibold">Matrícula SUAP</span>
+                            <span id="profileMatricula" class="font-bold text-slate-800 font-mono">2023108920</span>
+                        </div>
+                        <div class="flex justify-between py-2.5 border-b border-slate-100">
+                            <span class="text-slate-500 font-semibold">Código do Cartão Físico</span>
+                            <span id="profileCardCode" class="font-bold text-slate-800 font-mono">8842-109</span>
+                        </div>
+                        <div class="flex justify-between py-2.5 border-b border-slate-100">
+                            <span class="text-slate-500 font-semibold">Categoria de Subsídio</span>
+                            <span class="font-bold text-emerald-600">Estudante Regular (R$ 1,40/refeição)</span>
+                        </div>
+                        <div class="flex justify-between py-2.5 border-b border-slate-100">
+                            <span class="text-slate-500 font-semibold">Campus</span>
+                            <span class="font-bold text-slate-800">Campus Central / IF</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER EMPÁTICO -->
+    <footer class="bg-white border-t border-slate-200 py-6 mt-12">
+        <div class="max-w-6xl mx-auto px-4 text-center text-xs text-slate-500">
+            <p class="font-semibold text-slate-700 mb-1">RefeiçON • Sistema Independente de Aceleração Universitária</p>
+            <p>Desenvolvido para eliminar filas e otimizar o tempo de estudo nos Restaurantes Universitários. Integrado via SUAP.</p>
+        </div>
+    </footer>
+
+    <!-- MODAL DE PAGAMENTO SIMULADO (PIX / CONCLUÍDO) -->
+    <div id="modalPagamento" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 text-center relative animate-fade-in">
+            <button onclick="fecharModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+
+            <div id="modalConteudoProcessando" class="py-8 space-y-4">
+                <div class="inline-block animate-spin text-brand-600 text-4xl">
+                    <i class="fa-solid fa-circle-notch"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-800">Processando via SUAP...</h3>
+                <p class="text-xs text-slate-500">Validando transação com a instituição.</p>
+            </div>
+
+            <div id="modalConteudoSucesso" class="hidden space-y-4">
+                <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-2xl font-bold">
+                    <i class="fa-solid fa-check"></i>
+                </div>
+                <h3 class="text-xl font-extrabold text-slate-900">Recarga Concluída! 🥳</h3>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    Adicionamos <strong id="modalValorConfirmado" class="text-brand-600 font-bold">R$ 0,00</strong> ao seu cartão RU. Já está liberado para passar na catraca!
+                </p>
+
+                <div id="boxPixSimulado" class="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-left space-y-2">
+                    <div class="flex items-center justify-between text-xs text-slate-500 font-bold">
+                        <span>PAGAMENTO AUTOMÁTICO</span>
+                        <span class="text-emerald-600 font-bold">APROVADO ✔</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500">Comprovante enviado para o seu e-mail institucional do SUAP.</p>
+                </div>
+
+                <button onclick="fecharModal()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 px-4 rounded-xl transition text-sm">
+                    Voltar ao Painel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST DE NOTIFICAÇÃO -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-slate-900 text-white px-5 py-3.5 rounded-2xl shadow-xl flex items-center gap-3 translate-y-20 opacity-0 transition-all duration-300 z-50 text-xs font-semibold">
+        <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
+        <span id="toastMessage">Operação realizada com sucesso!</span>
+    </div>
+
+    <!-- SCRIPT DA APLICAÇÃO -->
+    <script>
+        // ESTADO INICIAL DA APLICAÇÃO (DADOS MOCKADOS REALISTAS)
+        const PRECO_REFEICAO = 1.40;
+        
+        let appState = {
+            autenticadoSuap: false,
+            usuario: null,
+            saldo: 0.00,
+            historico: []
+        };
+
+        // INICIALIZAÇÃO DA PÁGINA
+        window.onload = function() {
+            renderSaldo();
+            calcularRefeicoes();
+            renderHistorico();
+        };
+
+        // CONEXÃO / LOGIN VIA SUAP
+        function autenticarSuap() {
+            const user = document.getElementById('suapUser').value.trim();
+            const pass = document.getElementById('suapPassword').value.trim();
+
+            if (!user || !pass) {
+                showToast("Preencha o usuário e senha do SUAP!", "error");
+                return;
+            }
+
+            const btn = document.getElementById('btnConectarSuap');
+            btn.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin"></i> Autenticando no SUAP...`;
+            btn.disabled = true;
+
+            setTimeout(() => {
+                // Simulação de login efetuado com sucesso no SUAP
+                appState.autenticadoSuap = true;
+                appState.saldo = 7.00; // Saldo mock inicial pós login
+                appState.usuario = {
+                    nome: 'Luana Martins da Silva',
+                    matricula: user,
+                    codigoCartao: '8842-109',
+                    avatar: 'https://placehold.co/100x100/16a34a/ffffff?text=LM'
+                };
+
+                appState.historico = [
+                    { id: 1, data: 'Hoje, 11:45', descricao: 'Almoço RU - Catraca 02', valor: -1.40, metodo: 'Cartão RU', status: 'Concluído' },
+                    { id: 2, data: 'Ontem, 18:00', descricao: 'Jantar RU - Catraca 01', valor: -1.40, metodo: 'Cartão RU', status: 'Concluído' },
+                    { id: 3, data: '02/Nov, 09:15', descricao: 'Recarga Online RefeiçON', valor: 9.80, metodo: 'PIX', status: 'Concluído' }
+                ];
+
+                // Atualização da Interface Visual
+                document.getElementById('suapLoginForm').classList.add('hidden');
+                document.getElementById('suapCardLoaded').classList.remove('hidden');
+                document.getElementById('suapStatusBadge').innerText = "Autenticado";
+                document.getElementById('suapStatusBadge').className = "text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full";
+                
+                document.getElementById('suapStatusDot').className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
+                document.getElementById('suapStatusText').innerText = "SUAP Conectado";
+
+                // Atualiza dados no Header
+                document.getElementById('userNameHeader').innerText = appState.usuario.nome;
+                document.getElementById('userMatriculaHeader').innerText = `Mat: ${appState.usuario.matricula}`;
+                document.getElementById('userAvatar').src = appState.usuario.avatar;
+
+                // Atualiza Profile
+                document.getElementById('profileFullName').innerText = appState.usuario.nome;
+                document.getElementById('profileMatricula').innerText = appState.usuario.matricula;
+                document.getElementById('profileCardCode').innerText = appState.usuario.codigoCartao;
+                document.getElementById('profileAvatarImg').src = appState.usuario.avatar;
+                document.getElementById('profileLoggedOutView').classList.add('hidden');
+                document.getElementById('profileLoggedInView').classList.remove('hidden');
+
+                // Habilita Formulário de Recarga
+                const formRecarga = document.getElementById('formRecarga');
+                formRecarga.classList.remove('opacity-50', 'pointer-events-none');
+
+                renderSaldo();
+                renderHistorico();
+                showToast("Autenticado via SUAP! Cartão vinculado.", "success");
+            }, 1200);
+        }
+
+        function desconectarSuap() {
+            appState.autenticadoSuap = false;
+            appState.usuario = null;
+            appState.saldo = 0.00;
+            appState.historico = [];
+
+            // Reset de UI
+            document.getElementById('suapLoginForm').classList.remove('hidden');
+            document.getElementById('suapCardLoaded').classList.add('hidden');
+            document.getElementById('suapStatusBadge').innerText = "Login Necessário";
+            document.getElementById('suapStatusBadge').className = "text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full";
+
+            document.getElementById('suapStatusDot').className = "w-2 h-2 rounded-full bg-slate-400";
+            document.getElementById('suapStatusText').innerText = "SUAP Desconectado";
+
+            document.getElementById('btnConectarSuap').innerHTML = `<i class="fa-solid fa-right-to-bracket"></i> Conectar e Buscar Cartão do RU`;
+            document.getElementById('btnConectarSuap').disabled = false;
+
+            document.getElementById('userNameHeader').innerText = "Não Autenticado";
+            document.getElementById('userMatriculaHeader').innerText = "Acesse via SUAP";
+            document.getElementById('userAvatar').src = "https://placehold.co/100x100/e2e8f0/64748b?text=?";
+
+            document.getElementById('profileLoggedOutView').classList.remove('hidden');
+            document.getElementById('profileLoggedInView').classList.add('hidden');
+
+            const formRecarga = document.getElementById('formRecarga');
+            formRecarga.classList.add('opacity-50', 'pointer-events-none');
+
+            renderSaldo();
+            renderHistorico();
+            showToast("Sessão do SUAP encerrada com segurança.", "success");
+        }
+
+        // NAVEGAÇÃO ENTRE ABAS
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            document.querySelectorAll('[id^="tabBtn-"]').forEach(btn => {
+                btn.className = 'px-5 py-3 font-semibold text-sm rounded-xl transition flex items-center gap-2 text-slate-600 hover:bg-slate-100';
+            });
+
+            const targetTab = document.getElementById('tab-' + tabId);
+            const targetBtn = document.getElementById('tabBtn-' + tabId);
+
+            if (targetTab && targetBtn) {
+                targetTab.classList.add('active');
+                targetBtn.className = 'px-5 py-3 font-semibold text-sm rounded-xl transition flex items-center gap-2 bg-brand-600 text-white shadow-md shadow-brand-500/20';
+            }
+        }
+
+        // CÁLCULO DE REFEIÇÕES DINÂMICO
+        function calcularRefeicoes() {
+            const inputValor = parseFloat(document.getElementById('inputValor').value) || 0;
+            const qtdRefeicoes = Math.floor(inputValor / PRECO_REFEICAO);
+            
+            document.getElementById('calcRefeicoesValor').innerText = qtdRefeicoes;
+            
+            const dias = (qtdRefeicoes / 2).toFixed(1);
+            document.getElementById('calcMetaDias').innerText = `Dá para aproximadamente ${dias} dias (Almoço + Jantar).`;
+        }
+
+        // SELEÇÃO DE PRESETS DE VALOR
+        function setValorPreset(valor, btnElement) {
+            document.getElementById('inputValor').value = valor.toFixed(2);
+            
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.classList.remove('active', 'border-brand-500', 'bg-brand-50');
+            });
+
+            if (btnElement) {
+                btnElement.classList.add('active', 'border-brand-500', 'bg-brand-50');
+            }
+            
+            calcularRefeicoes();
+        }
+
+        // PROCESSAR FORMULÁRIO DE RECARGA
+        function processarRecarga(e) {
+            e.preventDefault();
+
+            if (!appState.autenticadoSuap) {
+                showToast("Por favor, acesse via SUAP primeiro!", "error");
+                return;
+            }
+
+            const valor = parseFloat(document.getElementById('inputValor').value);
+            const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
+
+            if (!valor || valor <= 0) {
+                showToast("Insira um valor de recarga válido!", "error");
+                return;
+            }
+
+            abrirModal();
+
+            setTimeout(() => {
+                appState.saldo += valor;
+                
+                const agora = new Date();
+                const horaFormatada = `Hoje, ${agora.getHours().toString().padStart(2, '0')}:${agora.getMinutes().toString().padStart(2, '0')}`;
+                
+                appState.historico.unshift({
+                    id: Date.now(),
+                    data: horaFormatada,
+                    descricao: 'Recarga Online RefeiçON',
+                    valor: valor,
+                    metodo: paymentMethod,
+                    status: 'Concluído'
+                });
+
+                renderSaldo();
+                renderHistorico();
+
+                document.getElementById('modalConteudoProcessando').classList.add('hidden');
+                document.getElementById('modalConteudoSucesso').classList.remove('hidden');
+                document.getElementById('modalValorConfirmado').innerText = `R$ ${valor.toFixed(2)}`;
+
+            }, 1500);
+        }
+
+        // ATUALIZA VISUALIZADORES DE SALDO
+        function renderSaldo() {
+            document.getElementById('displaySaldo').innerText = `R$ ${appState.saldo.toFixed(2)}`;
+            const refeicoesTotais = Math.floor(appState.saldo / PRECO_REFEICAO);
+            document.getElementById('displayRefeicoesCount').innerText = `${refeicoesTotais} Refeições 🍲`;
+        }
+
+        // RENDERIZA LISTA DE HISTÓRICO
+        function renderHistorico() {
+            const tbody = document.getElementById('listaHistorico');
+            tbody.innerHTML = '';
+
+            if (appState.historico.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-400">Nenhum registro encontrado. Faça login via SUAP para visualizar.</td></tr>`;
+                return;
+            }
+
+            appState.historico.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition";
+                
+                const isPositivo = item.valor > 0;
+                const valorFormatado = `${isPositivo ? '+' : ''} R$ ${Math.abs(item.valor).toFixed(2)}`;
+                const corValor = isPositivo ? 'text-emerald-600 font-bold' : 'text-slate-700';
+
+                tr.innerHTML = `
+                    <td class="py-3.5 px-2 text-slate-500">${item.data}</td>
+                    <td class="py-3.5 px-2 text-slate-800 font-semibold">${item.descricao}</td>
+                    <td class="py-3.5 px-2 text-slate-500">${item.metodo}</td>
+                    <td class="py-3.5 px-2 text-right ${corValor}">${valorFormatado}</td>
+                    <td class="py-3.5 px-2 text-center">
+                        <span class="inline-block bg-emerald-100 text-emerald-700 text-[10px] font-extrabold px-2 py-0.5 rounded-full">
+                            ${item.status}
+                        </span>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function limparHistoricoSimulado() {
+            appState.historico = [];
+            renderHistorico();
+            showToast("Histórico local limpo com sucesso!", "success");
+        }
+
+        // FUNÇÕES DO MODAL
+        function abrirModal() {
+            document.getElementById('modalConteudoProcessando').classList.remove('hidden');
+            document.getElementById('modalConteudoSucesso').classList.add('hidden');
+            document.getElementById('modalPagamento').classList.remove('hidden');
+        }
+
+        function fecharModal() {
+            document.getElementById('modalPagamento').classList.add('hidden');
+        }
+
+        // TOAST SYSTEM
+        function showToast(message, type = "success") {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+            const toastIcon = document.getElementById('toastIcon');
+
+            toastMessage.innerText = message;
+            
+            if (type === "error") {
+                toastIcon.className = "fa-solid fa-circle-exclamation text-rose-400 text-base";
+            } else {
+                toastIcon.className = "fa-solid fa-circle-check text-emerald-400 text-base";
+            }
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3500);
+        }
+    </script>
+</body>
+</html>
