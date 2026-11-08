@@ -2,7 +2,7 @@
 
 > **Protótipo com dados fictícios.** Nenhum dado real é enviado, guardado ou processado. Feito em uma imersão do Gemini Lab, com vibe coding no Gemini Canvas.
 
-[**Ver demo online**](https://giovanna-dantas/refeicon-recarga-ru/](https://giovanna-dantas.github.io/refeicon-recarga-ru/) · [Ver o prompt](PROMPT.md)
+[**Ver demo online**](https://giovanna-dantas.github.io/refeicon-recarga-ru/) · [Ver o prompt](PROMPT.md)
 
 ![Tela principal do RefeiçON](img/tela-principal.jpg)
 
