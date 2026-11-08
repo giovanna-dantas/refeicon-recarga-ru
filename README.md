@@ -85,8 +85,3 @@ Não precisa instalar nada. Baixe o arquivo `index.html` e abra no navegador, ou
 - Preocupação com ética e privacidade desde o desenho
 - Trabalho em dupla e documentação
 
-## Autoria
-
-Criado por **Giovanna Dantas** e **[@NOME-DA-MARI]** durante o Gemini Lab, no IFSP.
-
-[LinkedIn](https://www.linkedin.com/in/giovanna-dantass/)
